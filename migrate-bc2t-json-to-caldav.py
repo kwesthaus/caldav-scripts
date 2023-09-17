@@ -5,9 +5,6 @@ import json
 import uuid
 import argparse
 
-DEBUG_LIMIT = False
-TEST_MAX = 50
-
 created_tasks = set()
 
 # so far this script handles the title, description, completion status, priority, and subtasks
@@ -76,6 +73,7 @@ def main():
     parser = argparse.ArgumentParser(description='Read tasks from a bc2t file and migrate them to a caldav server')
     parser.add_argument('--credential-file', type=argparse.FileType('r'), required=True)
     parser.add_argument('--input-bc2t-file', type=argparse.FileType('r'), required=True)
+    parser.add_argument('--debug-limit', type=int)
     args = parser.parse_args()
 
     creds = json.load(args.credential_file)
@@ -106,7 +104,7 @@ def main():
                 print(f"completed {ctr} so far")
                 print()
                 print()
-            if DEBUG_LIMIT and ctr >= TEST_MAX:
+            if args.debug_limit and ctr >= args.debug_limit:
                 return
 
             if task['id'] in created_tasks:
