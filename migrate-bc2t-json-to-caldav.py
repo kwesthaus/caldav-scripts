@@ -5,8 +5,6 @@ import json
 import uuid
 import argparse
 
-created_tasks = set()
-
 # so far this script handles the title, description, completion status, priority, and subtasks
 # other metadata is lost
 # probably only other thing I care about is reminders and due date?
@@ -91,6 +89,7 @@ def main():
         print(tech_cal.name)
         print(tech_cal.get_supported_components())
 
+        created_tasks = set()
 
         # iterate over the json file we already have from bc2
         j = json.load(args.input_bc2_file)
