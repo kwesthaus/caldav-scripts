@@ -87,12 +87,8 @@ def main():
             password=creds['password'],
     ) as client:
         my_principal = client.principal()
-        calendars = my_principal.calendars()
-        tech_cal = None
-        for c in calendars:
-            print(f"{c.name} {c.url}")
-            if c.name == "Tech":
-                tech_cal = c
+
+        tech_cal = my_principal.calendar('Tech')
 
         print(tech_cal.name)
         print(tech_cal.get_supported_components())
