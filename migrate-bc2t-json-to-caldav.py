@@ -95,8 +95,7 @@ def main():
         created_tasks = set()
 
         # iterate over the json file we already have from bc2
-        j = json.load(args.input_bc2_file)
-
+        j = json.load(args.input_bc2t_file)
         ctr = 0
         for task in j:
             ctr += 1
