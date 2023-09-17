@@ -3,10 +3,7 @@
 import caldav
 import json
 import uuid
-
-creds = None
-with open('../migadu-creds.json', 'r') as c:
-    creds = json.load(c)
+import argparse
 
 DEBUG_LIMIT = False
 TEST_MAX = 50
@@ -75,6 +72,14 @@ def migrate_task(calendar, bc2_title, bc2_description, bc2_id, bc2_status, bc2_p
 
 
 def main():
+
+    parser = argparse.ArgumentParser(description='Read tasks from a bc2t file and migrate them to a caldav server')
+    parser.add_argument('--credential-file', type=argparse.FileType('r'), required=True)
+    parser.add_argument('--input-bc2t-file', type=argparse.FileType('r'), required=True)
+    args = parser.parse_args()
+
+    creds = json.load(args.credential_file)
+
     # create a client, use it to get a reference to the task list we are migrating to
     with caldav.DAVClient(
             url=creds['url'],
@@ -94,36 +99,35 @@ def main():
 
 
         # iterate over the json file we already have from bc2
-        with open('Tech-tasks.json', 'r') as f:
-            j = json.load(f)
+        j = json.load(args.input_bc2_file)
 
-            ctr = 0
-            for task in j:
-                ctr += 1
-                if not ctr % 100:
-                    print()
-                    print()
-                    print(f"completed {ctr} so far")
-                    print()
-                    print()
-                if DEBUG_LIMIT and ctr >= TEST_MAX:
-                    return
+        ctr = 0
+        for task in j:
+            ctr += 1
+            if not ctr % 100:
+                print()
+                print()
+                print(f"completed {ctr} so far")
+                print()
+                print()
+            if DEBUG_LIMIT and ctr >= TEST_MAX:
+                return
 
-                if task['id'] in created_tasks:
-                    print(f"skipping double: {task['title'][:8]}")
-                    continue
-                created_tasks.add(task['id'])
-                uid = [migrate_task(tech_cal, task['title'], task['description'], task['id'], task['status'], task['priority'], None)]
+            if task['id'] in created_tasks:
+                print(f"skipping double: {task['title'][:8]}")
+                continue
+            created_tasks.add(task['id'])
+            uid = [migrate_task(tech_cal, task['title'], task['description'], task['id'], task['status'], task['priority'], None)]
 
-                if task['hasSubTasks']:
-                    for child in task['subTasks']:
-                        if child['id'] in created_tasks:
-                            print(f"skipping double: {child['title'][:8]}")
-                            continue
-                        created_tasks.add(child['id'])
-                        migrate_task(tech_cal, child['title'], child['description'], child['id'], child['status'], child['priority'], uid)
+            if task['hasSubTasks']:
+                for child in task['subTasks']:
+                    if child['id'] in created_tasks:
+                        print(f"skipping double: {child['title'][:8]}")
+                        continue
+                    created_tasks.add(child['id'])
+                    migrate_task(tech_cal, child['title'], child['description'], child['id'], child['status'], child['priority'], uid)
 
-            print(f"migrated {ctr} tasks")
+        print(f"migrated {ctr} tasks")
 
 
 if __name__ == "__main__":
