@@ -87,12 +87,9 @@ def main():
     ) as client:
         my_principal = client.principal()
 
-        tech_cal = my_principal.calendar('Tech')
-
-        print(tech_cal.name)
-        print(tech_cal.get_supported_components())
-
         created_tasks = set()
+        list_actions = {}
+        curr_list = None
 
         # iterate over the json file we already have from bc2
         j = json.load(args.input_bc2t_file)
@@ -108,11 +105,35 @@ def main():
             if args.debug_limit and ctr >= args.debug_limit:
                 return
 
+            task_list_name = task['collectionName']
+            if task_list_name not in list_actions:
+                try:
+                    curr_list = my_principal.calendar(task_list_name)
+                    print(f'List {task_list_name} already exists, do you want to add to it or skip items in that list?')
+                    action = None
+                    while action != 'add' and action != 'skip':
+                        action = input('"add" or "skip": ').strip()
+                    list_actions[task_list_name] = action
+                except caldav.lib.error.NotFoundError as e:
+                    print(f'List {task_list_name} does not exist yet, do you want to create it or skip items in that list?')
+                    action = None
+                    while action != 'create' and action != 'skip':
+                        action = input('"create" or "skip": ').strip()
+                    if action == 'skip':
+                        list_actions[task_list_name] = action
+                    else:
+                        curr_list = my_principal.make_calendar(name=task_list_name, supported_calendar_component_set=['VTODO'])
+                        list_actions[task_list_name] = 'add'
+            if list_actions[task_list_name] == 'skip':
+                print(f"skipping item in list {task_list_name}")
+                continue
+
             if task['id'] in created_tasks:
                 print(f"skipping double: {task['title'][:8]}")
                 continue
+
             created_tasks.add(task['id'])
-            uid = [migrate_task(tech_cal, task['title'], task['description'], task['id'], task['status'], task['priority'], None)]
+            uid = [migrate_task(curr_list, task['title'], task['description'], task['id'], task['status'], task['priority'], None)]
 
             if task['hasSubTasks']:
                 for child in task['subTasks']:
@@ -120,7 +141,7 @@ def main():
                         print(f"skipping double: {child['title'][:8]}")
                         continue
                     created_tasks.add(child['id'])
-                    migrate_task(tech_cal, child['title'], child['description'], child['id'], child['status'], child['priority'], uid)
+                    migrate_task(curr_list, child['title'], child['description'], child['id'], child['status'], child['priority'], uid)
 
         print(f"migrated {ctr} tasks")
 
