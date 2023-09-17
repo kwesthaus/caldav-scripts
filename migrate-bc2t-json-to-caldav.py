@@ -8,6 +8,9 @@ import argparse
 # so far this script handles the title, description, completion status, priority, and subtasks
 # other metadata is lost
 # probably only other thing I care about is reminders and due date?
+#
+# also, this function does not recurse. if you want to migrate subtasks, you need to call this function for the parent
+# and each of the subtasks separately
 def migrate_task(calendar, bc2_title, bc2_description, bc2_id, bc2_status, bc2_priority, parent_caldav_uid):
     print(f"migrating {bc2_title[:8]}...")
     # even distribution
