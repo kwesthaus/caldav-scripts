@@ -52,7 +52,8 @@ def migrate_single_task(calendar, bc2_task, parent_uid):
         caldav_task['due'] = None
     else:
         # original value is milliseconds from epoch
-        caldav_task['due'] = datetime.date.fromtimestamp(bc2_duetime // 1000)
+        # just get the day, forget about specific time/timezone
+        caldav_task['due'] = datetime.date.fromtimestamp(bc2_task['dtstart'] // 1000)
 
     # call graph: save_todo() -> self._use_or_create_ics() -> vcal.create_ical()
     # create_ical() uses the "parent" and "child" keys to determine links
