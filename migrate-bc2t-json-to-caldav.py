@@ -61,6 +61,11 @@ def migrate_single_task(calendar, bc2_task, parent_uid, reminders):
     res = calendar.save_todo(**caldav_task)
 
     # reminder
+    # until this draft PR is completed: https://github.com/python-caldav/caldav/pull/221
+    # we have to edit the middleman representation (I chose vobject_instance over icalendar_instance)
+    # https://github.com/python-caldav/caldav/blob/9d92ce3c5d270c9396a40d3a4870587979fa410a/docs/source/index.rst#quickstart
+    # https://github.com/eventable/vobject/blob/498555a553155ea9b26aace93332ae79365ecb31/README.md#icalendar
+    # https://github.com/eventable/vobject/blob/498555a553155ea9b26aace93332ae79365ecb31/vobject/icalendar.py#L1294
     for reminder in reminders:
         res.vobject_instance.vtodo.add('valarm')
         res.vobject_instance.vtodo.valarm_list[-1].add('action').value = 'DISPLAY'
