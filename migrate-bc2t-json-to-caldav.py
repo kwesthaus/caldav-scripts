@@ -41,7 +41,7 @@ def migrate_single_task(calendar, bc2_task, parent_uid):
 
     # parent
     if parent_uid:
-        caldav_task['parent'] = parent_uid
+        caldav_task['parent'] = [parent_uid]
     else:
         # has to be iterable so we use [] instead of None
         caldav_task['parent'] = []
@@ -133,7 +133,7 @@ def main():
                 continue
             created_tasks.add(task['id'])
 
-            created_task = [migrate_single_task(curr_list, task, None)]
+            created_task = migrate_single_task(curr_list, task, None)
 
             # this pattern only handles 1 level of nesting, which is ok for my bc2t files
             if task['hasSubTasks']:
