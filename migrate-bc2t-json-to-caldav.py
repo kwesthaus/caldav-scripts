@@ -65,8 +65,8 @@ def migrate_single_task(calendar, bc2_task, parent_uid):
 def main():
 
     parser = argparse.ArgumentParser(description='Read tasks from a bc2t file and migrate them to a caldav server')
-    parser.add_argument('--credential-file', type=argparse.FileType('r'), required=True)
-    parser.add_argument('--input-bc2t-file', type=argparse.FileType('r'), required=True)
+    parser.add_argument('-c', '--credential-file', type=argparse.FileType('r'), required=True)
+    parser.add_argument('-i', '--input-bc2t-file', type=argparse.FileType('r'), required=True)
     parser.add_argument('--debug-limit', type=int)
     args = parser.parse_args()
 
