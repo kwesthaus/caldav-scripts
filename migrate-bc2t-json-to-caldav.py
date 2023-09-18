@@ -45,7 +45,7 @@ def migrate_task(calendar, bc2_title, bc2_description, bc2_id, bc2_status, bc2_p
         parent_caldav_uid = []
 
     # due
-    if bc2_duetime == 9223372036854775807:
+    if bc2_duetime == 0x7fffffffffffffff:
         duedate = None
     else:
         duedate = datetime.date.fromtimestamp(bc2_duetime // 1000)
