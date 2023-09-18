@@ -13,10 +13,11 @@ import argparse
 # and each of the subtasks separately
 def migrate_task(calendar, bc2_title, bc2_description, bc2_id, bc2_status, bc2_priority, parent_caldav_uid):
     print(f"migrating {bc2_title[:8]}...")
+    # 1-4 is is high, 5 is medium, 6-9 is low
     # even distribution
     # ical_priority = 5 - (2*bc2_priority)
     #
-    # keep high and medium high, everything else to low
+    # another distribution: keep high and medium-high, everything else to low
     if bc2_priority < 0:
         bc2_priority = 0
     ical_priority = 7 - (2*bc2_priority)
@@ -79,7 +80,7 @@ def main():
 
     creds = json.load(args.credential_file)
 
-    # create a client, use it to get a reference to the task list we are migrating to
+    # create a client
     with caldav.DAVClient(
             url=creds['url'],
             username=creds['username'],
@@ -91,7 +92,7 @@ def main():
         list_actions = {}
         curr_list = None
 
-        # iterate over the json file we already have from bc2
+        # iterate over the list of tasks we already have from bc2
         j = json.load(args.input_bc2t_file)
         ctr = 0
         for task in j:
