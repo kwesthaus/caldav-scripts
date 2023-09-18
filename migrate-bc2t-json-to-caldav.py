@@ -90,7 +90,9 @@ def main():
 
     # bc2t file is just 2 json lists (1 for tasks and 1 for reminders) with a special separator, "****///****"
     # separator and reminders will not be included if there are none
-    input_bc2t_strs = args.input_bc2t_file.read().replace('\n', '').split('****///****')
+    # my export of all tasks also had multiple commas in a row in the reminders section which is not proper json
+    # the below handles 3 commas in a row (the max in my file) but YMMV
+    input_bc2t_strs = args.input_bc2t_file.read().replace(',,,', ',,').replace(',,', ',').replace('\n', '').split('****///****')
     j_tasks = json.loads(input_bc2t_strs[0])
     if len(input_bc2t_strs) > 1:
         j_reminders = json.loads(input_bc2t_strs[1])
