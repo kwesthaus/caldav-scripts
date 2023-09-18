@@ -78,7 +78,11 @@ def main():
     parser.add_argument('--debug-limit', type=int)
     args = parser.parse_args()
 
+    # bc2t file is just 2 json lists (1 for tasks and 1 for reminders) with a special separator, "****///****"
     creds = json.load(args.credential_file)
+    (tasks, reminders) = args.input_bc2t_file.read().replace('\n', '').split('****///****')
+    j_tasks = json.loads(tasks)
+    j_reminders = json.loads(reminders)
 
     # create a client
     with caldav.DAVClient(
@@ -93,9 +97,8 @@ def main():
         curr_list = None
 
         # iterate over the list of tasks we already have from bc2
-        j = json.load(args.input_bc2t_file)
         ctr = 0
-        for task in j:
+        for task in j_tasks:
             ctr += 1
             if not ctr % 100:
                 print()
