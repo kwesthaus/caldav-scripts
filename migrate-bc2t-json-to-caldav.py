@@ -4,6 +4,7 @@ import caldav
 import json
 import uuid
 import argparse
+import datetime
 
 # so far this script handles the title, description, completion status, priority, and subtasks
 # other metadata is lost
@@ -11,8 +12,21 @@ import argparse
 #
 # also, this function does not recurse. if you want to migrate subtasks, you need to call this function for the parent
 # and each of the subtasks separately
-def migrate_task(calendar, bc2_title, bc2_description, bc2_id, bc2_status, bc2_priority, parent_caldav_uid):
+def migrate_task(calendar, bc2_title, bc2_description, bc2_id, bc2_status, bc2_priority, parent_uid, bc2_duetime):
     print(f"migrating {bc2_title[:8]}...")
+
+    # id
+    # python-caldav uses the uuid module to generate a uid when creating a new task, we will do the same
+    # https://github.com/python-caldav/caldav/blob/674c223fe2dc775a47f4cba8fe499d3d5fda757e/caldav/lib/vcal.py#LL144C34-L144C45
+    this_uid = str(uuid.uuid1())
+
+    # status
+    if bc2_status:
+        ical_status = 'COMPLETED'
+    else:
+        ical_status = None
+
+    # priority
     # 1-4 is is high, 5 is medium, 6-9 is low
     # even distribution
     # ical_priority = 5 - (2*bc2_priority)
@@ -21,52 +35,33 @@ def migrate_task(calendar, bc2_title, bc2_description, bc2_id, bc2_status, bc2_p
     if bc2_priority < 0:
         bc2_priority = 0
     ical_priority = 7 - (2*bc2_priority)
-    res = None
-    # python-caldav uses the uuid module to generate a uid when creating a new task, we will do the same
-    # https://github.com/python-caldav/caldav/blob/674c223fe2dc775a47f4cba8fe499d3d5fda757e/caldav/lib/vcal.py#LL144C34-L144C45
-    this_uid = str(uuid.uuid1())
 
+    # parent
     print(f"this_uid: {this_uid}, parent_caldav_uid: {parent_caldav_uid}")
+    if parent_uid:
+        parent_caldav_uid = parent_uid
+    else:
+        # has to be iterable so we use [] instead of None
+        parent_caldav_uid = []
+
+    # due
+    if bc2_duetime == 9223372036854775807:
+        duedate = None
+    else:
+        duedate = datetime.date.fromtimestamp(bc2_duetime // 1000)
 
     # call graph: save_todo() -> self._use_or_create_ics() -> vcal.create_ical()
     # create_ical() uses the "parent" and "child" keys to determine links
     # https://github.com/python-caldav/caldav/blob/674c223fe2dc775a47f4cba8fe499d3d5fda757e/caldav/lib/vcal.py#L172
-    if parent_caldav_uid:
-        if bc2_status:
-            res = calendar.save_todo(
-                summary=bc2_title,
-                description=bc2_description,
-                STATUS='COMPLETED',
-                # percent_complete=100,
-                priority=ical_priority,
-                parent=parent_caldav_uid,
-                uid=this_uid,
-            )
-        else:
-            res = calendar.save_todo(
-                summary=bc2_title,
-                description=bc2_description,
-                priority=ical_priority,
-                parent=parent_caldav_uid,
-                uid=this_uid,
-            )
-    else:
-        if bc2_status:
-            res = calendar.save_todo(
-                summary=bc2_title,
-                description=bc2_description,
-                STATUS='COMPLETED',
-                # percent_complete=100,
-                priority=ical_priority,
-                uid=this_uid,
-            )
-        else:
-            res = calendar.save_todo(
-                summary=bc2_title,
-                description=bc2_description,
-                priority=ical_priority,
-                uid=this_uid,
-            )
+    res = calendar.save_todo(
+        summary=bc2_title,
+        description=bc2_description,
+        STATUS=ical_status,
+        priority=ical_priority,
+        parent=parent_caldav_uid,
+        uid=this_uid,
+        due=duedate,
+    )
     return this_uid
 
 
@@ -137,7 +132,7 @@ def main():
                 continue
 
             created_tasks.add(task['id'])
-            uid = [migrate_task(curr_list, task['title'], task['description'], task['id'], task['status'], task['priority'], None)]
+            uid = [migrate_task(curr_list, task['title'], task['description'], task['id'], task['status'], task['priority'], None, task['dtstart'])]
 
             if task['hasSubTasks']:
                 for child in task['subTasks']:
@@ -145,7 +140,7 @@ def main():
                         print(f"skipping double: {child['title'][:8]}")
                         continue
                     created_tasks.add(child['id'])
-                    migrate_task(curr_list, child['title'], child['description'], child['id'], child['status'], child['priority'], uid)
+                    migrate_task(curr_list, child['title'], child['description'], child['id'], child['status'], child['priority'], uid, task['dtstart'])
 
         print(f"migrated {ctr} tasks")
 
