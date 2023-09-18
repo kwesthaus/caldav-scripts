@@ -8,7 +8,7 @@ import datetime
 
 # this function does not recurse. if you want to migrate subtasks, you need to call this function for the parent
 # and each of the subtasks separately
-def migrate_single_task(calendar, bc2_task, parent_uid):
+def migrate_single_task(calendar, bc2_task, parent_uid, reminders):
     print(f"migrating {bc2_task['title'][:8]}...")
     caldav_task = {}
 
@@ -59,6 +59,22 @@ def migrate_single_task(calendar, bc2_task, parent_uid):
     # create_ical() uses the "parent" and "child" keys to determine links
     # https://github.com/python-caldav/caldav/blob/674c223fe2dc775a47f4cba8fe499d3d5fda757e/caldav/lib/vcal.py#L172
     res = calendar.save_todo(**caldav_task)
+
+    # reminder
+    for reminder in reminders:
+        res.vobject_instance.vtodo.add('valarm')
+        res.vobject_instance.vtodo.valarm_list[-1].add('action').value = 'DISPLAY'
+        # note the negatives!
+        if reminder['minutes'] > 0:
+            res.vobject_instance.vtodo.valarm_list[-1].add('trigger').value = datetime.timedelta(minutes=-reminder['minutes'])
+        else:
+            t_day = caldav_task['due']
+            t_start = datetime.time(0, 0)
+            t_time = datetime.timedelta(minutes=-reminder['minutes'])
+            t_dt = datetime.datetime.combine(t_day, t_start) + t_time
+            res.vobject_instance.vtodo.valarm_list[-1].add('trigger').value = t_dt
+        res.save()
+
     return caldav_task
 
 
@@ -78,6 +94,15 @@ def main():
     j_tasks = json.loads(input_bc2t_strs[0])
     if len(input_bc2t_strs) > 1:
         j_reminders = json.loads(input_bc2t_strs[1])
+        # make it easy to search reminders later when we are iterating over tasks
+        reminders_by_task_uid = {}
+        for reminder in j_reminders:
+            if reminder['itemId'] in reminders_by_task_uid:
+                reminders_by_task_uid[reminder['itemId']].append(reminder)
+            else:
+                reminders_by_task_uid[reminder['itemId']] = [reminder]
+    else:
+        reminders_by_task_uid = {}
 
     # create a client
     with caldav.DAVClient(
@@ -136,7 +161,7 @@ def main():
                 continue
             created_tasks.add(task['id'])
 
-            created_task = migrate_single_task(curr_list, task, None)
+            created_task = migrate_single_task(curr_list, task, None, reminders_by_task_uid.get(task['id'], []))
 
             # this pattern only handles 1 level of nesting, which is ok for my bc2t files
             if task['hasSubTasks']:
@@ -145,7 +170,7 @@ def main():
                         print(f"skipping double: {child['title'][:8]}")
                         continue
                     created_tasks.add(child['id'])
-                    migrate_single_task(curr_list, child, created_task['uid'])
+                    migrate_single_task(curr_list, child, created_task['uid'], reminders_by_task_uid.get(child['id'], []))
 
         print(f"migrated {ctr} tasks")
 
