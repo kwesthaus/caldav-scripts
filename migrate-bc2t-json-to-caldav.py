@@ -134,6 +134,7 @@ def main():
 
             created_task = [migrate_single_task(curr_list, task, None)]
 
+            # this pattern only handles 1 level of nesting, which is ok for my bc2t files
             if task['hasSubTasks']:
                 for child in task['subTasks']:
                     if child['id'] in created_tasks:
