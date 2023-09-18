@@ -70,11 +70,14 @@ def main():
     parser.add_argument('--debug-limit', type=int)
     args = parser.parse_args()
 
-    # bc2t file is just 2 json lists (1 for tasks and 1 for reminders) with a special separator, "****///****"
     creds = json.load(args.credential_file)
-    (tasks, reminders) = args.input_bc2t_file.read().replace('\n', '').split('****///****')
-    j_tasks = json.loads(tasks)
-    j_reminders = json.loads(reminders)
+
+    # bc2t file is just 2 json lists (1 for tasks and 1 for reminders) with a special separator, "****///****"
+    # separator and reminders will not be included if there are none
+    input_bc2t_strs = args.input_bc2t_file.read().replace('\n', '').split('****///****')
+    j_tasks = json.loads(input_bc2t_strs[0])
+    if len(input_bc2t_strs) > 1:
+        j_reminders = json.loads(input_bc2t_strs[1])
 
     # create a client
     with caldav.DAVClient(
