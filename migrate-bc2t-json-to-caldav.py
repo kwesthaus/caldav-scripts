@@ -48,6 +48,7 @@ def migrate_task(calendar, bc2_title, bc2_description, bc2_id, bc2_status, bc2_p
     if bc2_duetime == 0x7fffffffffffffff:
         duedate = None
     else:
+        # original value is milliseconds from epoch
         duedate = datetime.date.fromtimestamp(bc2_duetime // 1000)
 
     # call graph: save_todo() -> self._use_or_create_ics() -> vcal.create_ical()
@@ -104,6 +105,9 @@ def main():
             if args.debug_limit and ctr >= args.debug_limit:
                 return
 
+            # get or make appropriate caldav list for this task, and give user choice of action for all items in this list
+            # we only check this for parents, not nested tasks, so we are making the assumption that children are in the same list as their parents
+            # (I have a hard time imagining a case where that wouldn't happen, but just making assumptions explicit here)
             task_list_name = task['collectionName']
             if task_list_name not in list_actions:
                 try:
@@ -127,11 +131,12 @@ def main():
                 print(f"skipping item in list {task_list_name}")
                 continue
 
+            # subtasks show up both under their parent and on their own, so need to keep track of and avoid duplicates
             if task['id'] in created_tasks:
                 print(f"skipping double: {task['title'][:8]}")
                 continue
-
             created_tasks.add(task['id'])
+
             uid = [migrate_task(curr_list, task['title'], task['description'], task['id'], task['status'], task['priority'], None, task['dtstart'])]
 
             if task['hasSubTasks']:
