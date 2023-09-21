@@ -88,7 +88,8 @@ def main():
     parser = argparse.ArgumentParser(description='Read tasks from a bc2t file and migrate them to a caldav server')
     parser.add_argument('-c', '--credential-file', type=argparse.FileType('r'), required=True)
     parser.add_argument('-i', '--input-bc2t-file', type=argparse.FileType('r'), required=True)
-    parser.add_argument('--debug-limit', type=int)
+    parser.add_argument('-a', '--action', choices=['prompt', 'avoid-existing', 'new-and-existing'], default='prompt')
+    parser.add_argument('-d', '--debug-limit', type=int)
     args = parser.parse_args()
 
     creds = json.load(args.credential_file)
@@ -136,31 +137,63 @@ def main():
             if args.debug_limit and ctr >= args.debug_limit:
                 return
 
-            # get or make appropriate caldav list for this task, and give user choice of action for all items in this list
-            # we only check this for parents, not nested tasks, so we are making the assumption that children are in the same list as their parents
-            # (I have a hard time imagining a case where that wouldn't happen, but just making assumptions explicit here)
+
+
             task_list_name = task['collectionName']
             if task_list_name not in list_actions:
-                try:
-                    curr_list = my_principal.calendar(task_list_name)
-                    print(f'List {task_list_name} already exists, do you want to add to it or skip items in that list?')
-                    action = None
-                    while action != 'add' and action != 'skip':
-                        action = input('"add" or "skip": ').strip()
-                    list_actions[task_list_name] = action
-                except caldav.lib.error.NotFoundError as e:
-                    print(f'List {task_list_name} does not exist yet, do you want to create it or skip items in that list?')
-                    action = None
-                    while action != 'create' and action != 'skip':
-                        action = input('"create" or "skip": ').strip()
-                    if action == 'skip':
+            
+                if args.action == 'prompt':
+                    # get or make appropriate caldav list for this task, and give user choice of action for all items in this list
+                    # we only check this for parents, not nested tasks, so we are making the assumption that children are in the same list as their parents
+                    # (I have a hard time imagining a case where that wouldn't happen, but just making assumptions explicit here)
+                    try:
+                        curr_list = my_principal.calendar(task_list_name)
+                        print(f'List {task_list_name} already exists, do you want to add to it or skip items in that list?')
+                        action = None
+                        while action != 'add' and action != 'skip':
+                            action = input('"add" or "skip": ').strip()
                         list_actions[task_list_name] = action
-                    else:
+                    except caldav.lib.error.NotFoundError as e:
+                        print(f'List {task_list_name} does not exist yet, do you want to create it or skip items in that list?')
+                        action = None
+                        while action != 'create' and action != 'skip':
+                            action = input('"create" or "skip": ').strip()
+                        if action == 'skip':
+                            list_actions[task_list_name] = action
+                        else:
+                            curr_list = my_principal.make_calendar(name=task_list_name, supported_calendar_component_set=['VTODO'])
+                            list_actions[task_list_name] = 'add'
+
+                elif args.action == 'avoid-existing':
+                    # user has already specified that we should make new lists, and avoid existing lists
+                    try:
+                        curr_list = my_principal.calendar(task_list_name)
+                        print(f'List {task_list_name} already exists, skipping as per command line arg')
+                        list_actions[task_list_name] = 'skip'
+                    except caldav.lib.error.NotFoundError as e:
+                        print(f'Creating new list {task_list_name} as per command line arg')
                         curr_list = my_principal.make_calendar(name=task_list_name, supported_calendar_component_set=['VTODO'])
                         list_actions[task_list_name] = 'add'
+                    
+                elif args.action == 'new-and-existing':
+                    # user has already specified that we should migrate tasks to both new and existing lists
+                    try:
+                        curr_list = my_principal.calendar(task_list_name)
+                        print(f'Using existing list {task_list_name} as per command line arg')
+                    except caldav.lib.error.NotFoundError as e:
+                        print(f'Creating new list {task_list_name} as per command line arg')
+                        curr_list = my_principal.make_calendar(name=task_list_name, supported_calendar_component_set=['VTODO'])
+                    list_actions[task_list_name] = 'add'
+
+                else:
+                    print("Skipped all elifs for args.action, this shouldn't happen!")
+                    exit(1)
+
             if list_actions[task_list_name] == 'skip':
                 print(f"skipping item in list {task_list_name}")
                 continue
+
+
 
             # subtasks show up both under their parent and on their own, so need to keep track of and avoid duplicates
             if task['id'] in created_tasks:
