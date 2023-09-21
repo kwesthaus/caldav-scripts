@@ -21,7 +21,13 @@ def migrate_single_task(calendar, bc2_task, parent_uid, reminders):
     # id
     # python-caldav uses the uuid module to generate a uid when creating a new task, we will do the same
     # https://github.com/python-caldav/caldav/blob/674c223fe2dc775a47f4cba8fe499d3d5fda757e/caldav/lib/vcal.py#LL144C34-L144C45
-    caldav_task['uid'] = str(uuid.uuid1())
+    # caldav_task['uid'] = str(uuid.uuid1())
+    #
+    # actually in recent exports the BC2 IDs already appear to be in uuid1 format, so we might as well reuse them
+    # what happens if we attempt to migrate a task with UID that already exists, you might ask?
+    # the save_todo() function below takes parameters no_overwrite and no_create, but as the default for both of them is false
+    # and we don't set those parameters, the existing task will be updated with new values
+    caldav_task['uid'] = bc2_task['itemId']
 
     # status
     if bc2_task['status']:
